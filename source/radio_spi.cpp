@@ -121,10 +121,10 @@
 */
 StatusBytes SdkEvalSpiWriteRegisters(uint8_t cRegAddress, uint8_t cNbBytes, uint8_t* pcBuffer)
 {
-	return SimpleSpirit1::Instance().SdkEvalSpiWriteRegisters(cRegAddress, cNbBytes, pcBuffer);
+	return SimpleS2LP::Instance().SdkEvalSpiWriteRegisters(cRegAddress, cNbBytes, pcBuffer);
 }
 
-StatusBytes SimpleSpirit1::SdkEvalSpiWriteRegisters(uint8_t cRegAddress, uint8_t cNbBytes, uint8_t* pcBuffer)
+StatusBytes SimpleS2LP::SdkEvalSpiWriteRegisters(uint8_t cRegAddress, uint8_t cNbBytes, uint8_t* pcBuffer)
 {
   uint8_t aHeader[2] = {0};
   uint16_t tmpstatus = 0x0000;
@@ -166,10 +166,10 @@ StatusBytes SimpleSpirit1::SdkEvalSpiWriteRegisters(uint8_t cRegAddress, uint8_t
 */
 StatusBytes SdkEvalSpiReadRegisters(uint8_t cRegAddress, uint8_t cNbBytes, uint8_t* pcBuffer)
 {
-	return SimpleSpirit1::Instance().SdkEvalSpiReadRegisters(cRegAddress, cNbBytes, pcBuffer);
+	return SimpleS2LP::Instance().SdkEvalSpiReadRegisters(cRegAddress, cNbBytes, pcBuffer);
 }
 
-StatusBytes SimpleSpirit1::SdkEvalSpiReadRegisters(uint8_t cRegAddress, uint8_t cNbBytes, uint8_t* pcBuffer)
+StatusBytes SimpleS2LP::SdkEvalSpiReadRegisters(uint8_t cRegAddress, uint8_t cNbBytes, uint8_t* pcBuffer)
 {
   uint16_t tmpstatus = 0x00;
   StatusBytes *pStatus = (StatusBytes *)&tmpstatus;
@@ -209,10 +209,10 @@ StatusBytes SimpleSpirit1::SdkEvalSpiReadRegisters(uint8_t cRegAddress, uint8_t 
 */
 StatusBytes SdkEvalSpiCommandStrobes(uint8_t cCommandCode)
 {
-	return SimpleSpirit1::Instance().SdkEvalSpiCommandStrobes(cCommandCode);
+	return SimpleS2LP::Instance().SdkEvalSpiCommandStrobes(cCommandCode);
 }
 
-StatusBytes SimpleSpirit1::SdkEvalSpiCommandStrobes(uint8_t cCommandCode)
+StatusBytes SimpleS2LP::SdkEvalSpiCommandStrobes(uint8_t cCommandCode)
 {
   uint8_t aHeader[2] = {0};
   uint16_t tmpstatus = 0x0000;
@@ -248,10 +248,10 @@ StatusBytes SimpleSpirit1::SdkEvalSpiCommandStrobes(uint8_t cCommandCode)
 */
 StatusBytes SdkEvalSpiWriteFifo(uint8_t cNbBytes, uint8_t* pcBuffer)
 {
-	return SimpleSpirit1::Instance().SdkEvalSpiWriteFifo(cNbBytes, pcBuffer);
+	return SimpleS2LP::Instance().SdkEvalSpiWriteFifo(cNbBytes, pcBuffer);
 }
 
-StatusBytes SimpleSpirit1::SdkEvalSpiWriteFifo(uint8_t cNbBytes, uint8_t* pcBuffer)
+StatusBytes SimpleS2LP::SdkEvalSpiWriteFifo(uint8_t cNbBytes, uint8_t* pcBuffer)
 {
   uint16_t tmpstatus = 0x0000;
   StatusBytes *pStatus = (StatusBytes *)&tmpstatus;
@@ -292,10 +292,10 @@ StatusBytes SimpleSpirit1::SdkEvalSpiWriteFifo(uint8_t cNbBytes, uint8_t* pcBuff
 */
 StatusBytes SdkEvalSpiReadFifo(uint8_t cNbBytes, uint8_t* pcBuffer)
 {
-	return SimpleSpirit1::Instance().SdkEvalSpiReadFifo(cNbBytes, pcBuffer);
+	return SimpleS2LP::Instance().SdkEvalSpiReadFifo(cNbBytes, pcBuffer);
 }
 
-StatusBytes SimpleSpirit1::SdkEvalSpiReadFifo(uint8_t cNbBytes, uint8_t* pcBuffer)
+StatusBytes SimpleS2LP::SdkEvalSpiReadFifo(uint8_t cNbBytes, uint8_t* pcBuffer)
 {
   uint16_t tmpstatus = 0x0000;
   StatusBytes *pStatus = (StatusBytes *)&tmpstatus;

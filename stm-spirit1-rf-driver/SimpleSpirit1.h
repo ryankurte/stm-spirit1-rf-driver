@@ -288,13 +288,13 @@ class SimpleS2LP {
     }
 
 	/** Qi Instance Methods **/
-    void qi_set_sqi_threshold(SqiThreshold xSqiThr) {
-    	// API REMOVED
-    }
+    //void qi_set_pqi_threshold(uin8_t xPqiThr) {
+    //	S2LPRadioSetPqiCheck(xPqiThr);
+    //}
 
-    void qi_sqi_check(SFunctionalState xNewState) {
-    	// API REMOVED
-    }
+    //void qi_pqi_check(SFunctionalState xNewState) {
+    //	S2LPRadioSetPqiCheck(xPqiThr);
+    //}
 
     void qi_set_rssi_threshold_dbm(int nDbmValue) {
     	S2LPRadioSetRssiThreshdBm(nDbmValue);
@@ -310,8 +310,9 @@ class SimpleS2LP {
     }
 
     uint8_t qi_get_sqi() {
-    	// API REMOVED
-        return 0;
+        uint8_t tmp;
+    	S2LPSpiReadRegisters(LINK_QUALIF1_ADDR, 1, &tmp);  
+        return tmp & SQI_REGMASK;
     }
 
     /** Timer Instance Methods **/

@@ -384,13 +384,13 @@ static inline void rf_handle_tx_err(phy_link_tx_status_e phy_val = PHY_LINK_TX_F
 /* Note: we are in IRQ context */
 static void rf_callback_func(int event) {
     switch(event) {
-        case SimpleSpirit1::RX_DONE:
+        case SimpleS2LP::RX_DONE:
             rf_handle_rx_end();
             break;
-        case SimpleSpirit1::TX_DONE:
+        case SimpleS2LP::TX_DONE:
             rf_handle_tx_end();
             break;
-        case SimpleSpirit1::TX_ERR:
+        case SimpleS2LP::TX_ERR:
 #ifdef HEAVY_TRACING
             tr_debug("%s (%d): TX_ERR!!!", __func__, __LINE__);
 #endif
@@ -689,7 +689,7 @@ void NanostackRfPhySpirit1::rf_init(void) {
     osStatus ret;
 
     if(rf_device == NULL) {
-        rf_device = &SimpleSpirit1::CreateInstance(_spi_mosi, _spi_miso, _spi_sclk, _dev_irq, _dev_cs, _dev_sdn, _brd_led);
+        rf_device = &SimpleS2LP::CreateInstance(_spi_mosi, _spi_miso, _spi_sclk, _dev_irq, _dev_cs, _dev_sdn, _brd_led);
         rf_device->attach_irq_callback(rf_callback_func);
 
         ret = rf_ack_sender->start(rf_ack_loop);

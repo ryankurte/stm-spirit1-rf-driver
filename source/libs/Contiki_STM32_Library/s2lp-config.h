@@ -109,6 +109,10 @@ void Radio_interrupt_callback(void);
 #define RADIO_IRQ_ENABLE()   RadioGpioInterruptCmd(RADIO_GPIO_IRQ,0x04,0x04,ENABLE)
 #define RADIO_IRQ_DISABLE()  RadioGpioInterruptCmd(RADIO_GPIO_IRQ,0x04,0x04,DISABLE) 
 
+#define PREAMBLE_BYTE(v)           (4*v)
+#define SYNC_BYTE(v)               (8*v)
+
+
 #if defined(X_NUCLEO_S2868A1) || defined(X_NUCLEO_S2915A1)
 #define CHANNEL_SPACE               100e3
 #define CHANNEL_NUMBER              0 
@@ -129,9 +133,6 @@ void Radio_interrupt_callback(void);
 #define EN_ADDRESS                  S_DISABLE //S_ENABLE 
 #define EN_FEC                      S_DISABLE
 #define EN_WHITENING                S_ENABLE
-
-#define PREAMBLE_BYTE(v)           (4*v)
-#define SYNC_BYTE(v)               (8*v)
 
 
 #define POWER_INDEX                 7
@@ -185,13 +186,13 @@ void Radio_interrupt_callback(void);
 #define LPM_WAKEUP_TIME                 100
 #define DATA_SEND_TIME               	30
 
-#define PREAMBLE_LENGTH             PKT_PREAMBLE_LENGTH_04BYTES
-#define SYNC_LENGTH                 PKT_SYNC_LENGTH_4BYTES
-#define CONTROL_LENGTH              PKT_CONTROL_LENGTH_0BYTES
+#define PREAMBLE_LENGTH             PREAMBLE_BYTE(4)
+#define SYNC_LENGTH                 SYNC_BYTE(4)
+#define CONTROL_LENGTH              S_DISABLE
 #define EN_ADDRESS                  S_DISABLE
 #define EN_FEC                      S_DISABLE
 #define CHANNEL_NUMBER              0
-#define LENGTH_TYPE                 PKT_LENGTH_VAR
+#define LENGTH_TYPE                 S_ENABLE
 #define POWER_INDEX                 7
 #define RECEIVE_TIMEOUT             2000.0 /*change the value for required timeout period*/
 
@@ -202,7 +203,7 @@ void Radio_interrupt_callback(void);
 #define CHANNEL_SPACE               20e3
 #define FREQ_DEVIATION              20e3
 #define BANDWIDTH                   100.0e3
-#define MODULATION_SELECT           FSK
+#define MODULATION_SELECT           MOD_2FSK
 #define DATARATE                    38400
 #define XTAL_OFFSET_PPM             0
 #define SYNC_WORD                   0x1A2635A8
@@ -211,7 +212,7 @@ void Radio_interrupt_callback(void);
 #define EN_WHITENING                S_ENABLE
 #define INFINITE_TIMEOUT            0.0
 
-#define RADIO_MAX_FIFO_LEN         96
+#define S2LP_MAX_FIFO_LEN           96
 #endif
 
 #define XTAL_FREQUENCY              50000000    /* Hz */ 
@@ -223,7 +224,7 @@ void Radio_interrupt_callback(void);
  * The RADIO supports with its packet handler a length of 65,535 bytes,
  * and in direct mode (without packet handler) there is no limit of data.
  */  
-#define MAX_PACKET_LEN              RADIO_MAX_FIFO_LEN
+#define MAX_PACKET_LEN              S2LP_MAX_FIFO_LEN
 
 
 extern volatile FlagStatus PushButtonStatusWakeup;

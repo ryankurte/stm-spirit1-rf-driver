@@ -79,10 +79,7 @@ void SimpleS2LP::init() {
 
     /* Configures the S2LP radio part */
     SRadioInit x_radio_init = {
-            XTAL_OFFSET_PPM,
             (uint32_t)BASE_FREQUENCY,
-            (uint32_t)CHANNEL_SPACE,
-            CHANNEL_NUMBER,
             MODULATION_SELECT,
             DATARATE,
             (uint32_t)FREQ_DEVIATION,
@@ -98,9 +95,8 @@ void SimpleS2LP::init() {
             SYNC_LENGTH,
             SYNC_WORD,
             LENGTH_TYPE,
-            LENGTH_WIDTH,
-            CRC_MODE,
             CONTROL_LENGTH,
+            CRC_MODE,
             EN_ADDRESS,
             EN_FEC,
             EN_WHITENING
@@ -123,9 +119,9 @@ void SimpleS2LP::init() {
 
     /* Configure S2LP */
     radio_persistent_rx(S_ENABLE);
-    qi_set_sqi_threshold(SQI_TH_0);
-    qi_sqi_check(S_ENABLE);
-    qi_set_rssi_threshold_dbm(CCA_THRESHOLD);
+    //qi_set_sqi_threshold(SQI_TH_0);
+    //qi_sqi_check(S_ENABLE);
+    qi_set_rssi_threshold_dbm(RSSI_RX_THRESHOLD);
     timer_set_rx_timeout_stop_condition(SQI_ABOVE_THRESHOLD);
     timer_set_infinite_rx_timeout();
     //radio_afc_freeze_on_sync(S_ENABLE);
@@ -147,8 +143,8 @@ void SimpleS2LP::init() {
     /* Setup CSMA/CA */
     SCsmaInit x_csma_init = {
             S_ENABLE,         // enable persistent mode
-            TBIT_TIME_64,     // Tcca time
-            TCCA_TIME_3,      // Lcca length
+            CSMA_PERIOD_64TBIT, // Tcca time
+            3,                // Lcca length
             5,                // max nr of backoffs (<8)
             1,                // BU counter seed
             8                 // BU prescaler
@@ -167,7 +163,7 @@ static const volatile uint8_t *tx_fifo_buffer = NULL; // to be used in irq handl
 int SimpleS2LP::send(const void *payload, unsigned int payload_len, bool use_csma_ca) {
     /* Checks if the payload length is supported */
     if(payload_len > MAX_PACKET_LEN) {
-        return RADIO_TX_ERR;
+        return TX_ERR;
     }
 
     disable_s2lp_irq();
@@ -233,10 +229,10 @@ int SimpleS2LP::send(const void *payload, unsigned int payload_len, bool use_csm
     if(_s2lp_tx_started) { // in case of state timeout
         _s2lp_tx_started = false;
         enable_s2lp_irq();
-        return RADIO_TX_ERR;
+        return TX_ERR;
     } else {
         enable_s2lp_irq();
-        return RADIO_TX_OK;
+        return TX_DONE;
     }
 }
 
@@ -333,7 +329,7 @@ int SimpleS2LP::on(void) {
 uint8_t SimpleS2LP::refresh_state(void) {
     uint8_t mcstate;
 
-    S2LPSpiReadRegisters(MC_STATE0_BASE, 1, &mcstate);
+    S2LPSpiReadRegisters(MC_STATE0_ADDR, 1, &mcstate);
 
     return mcstate;
 }
@@ -443,7 +439,7 @@ int SimpleS2LP::channel_clear(void)
 
     /* If the received signal strength is above a certain level the medium is considered busy! */
     /* Compare RSSI value with threshold */
-    if(rssi_value < CCA_THRESHOLD) {
+    if(rssi_value < RSSI_RX_THRESHOLD) {
         return 0; // idle
     } else {
         return 1; // busy
