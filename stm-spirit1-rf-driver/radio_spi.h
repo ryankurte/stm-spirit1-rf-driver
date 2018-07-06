@@ -51,7 +51,7 @@ extern "C" {
 #ifdef USE_STM32F4XX_NUCLEO
 // #include "stm32f4xx_hal.h"
 #endif
-#include "SPIRIT_Config.h"
+#include "S2LP_Config.h"
 // #include "radio_spi.h"
 // #include "spirit1-arch.h"
 
@@ -67,12 +67,12 @@ extern "C" {
   
   
 /* Exported macro ------------------------------------------------------------*/
-  /* Define for SPIRIT1 board  */  
- #if !defined (USE_SPIRIT1_DEFAULT)
- #define USE_SPIRIT1_DEFAULT
+  /* Define for S2LP board  */  
+ #if !defined (USE_S2LP_DEFAULT)
+ #define USE_S2LP_DEFAULT
 #endif
   
-/* SPIRIT1_Spi_config */ 
+/* S2LP_Spi_config */ 
 /* SPI1 */  
 #define RADIO_SPI                                 SPI1
 #define RADIO_SPI_CLK_ENABLE()                  __SPI1_CLK_ENABLE()
@@ -90,7 +90,7 @@ extern "C" {
   
  
  
-#ifdef USE_SPIRIT1_DEFAULT    
+#ifdef USE_S2LP_DEFAULT    
 
 #define RADIO_SPI_SCK_PORT                      GPIOB
 #define RADIO_SPI_SCK_PIN                       GPIO_PIN_3
@@ -125,11 +125,11 @@ extern "C" {
    conditions (interrupts routines ...) */    
 #define RADIO_SPI_TIMEOUT_MAX                   ((uint32_t)1000)
 
-/* SPIRIT1_Spi_config_Private_Defines */  
+/* S2LP_Spi_config_Private_Defines */  
 #define CS_TO_SCLK_DELAY     0x0200//FIXME what is this doing?
 #define CLK_TO_CS_DELAY      0x0001
   
-/* SPIRIT1_Spi_config_Headers */
+/* S2LP_Spi_config_Headers */
 #define HEADER_WRITE_MASK     0x00                                /*!< Write mask for header byte*/
 #define HEADER_READ_MASK      0x01                                /*!< Read mask for header byte*/
 #define HEADER_ADDRESS_MASK   0x00                                /*!< Address mask for header byte*/
@@ -137,15 +137,15 @@ extern "C" {
   
 #define LINEAR_FIFO_ADDRESS 0xFF                                  /*!< Linear FIFO address*/
   
-/* SPIRIT1_Spi_config_Private_FunctionPrototypes */
+/* S2LP_Spi_config_Private_FunctionPrototypes */
 #define SPI_ENTER_CRITICAL()         IRQ_DISABLE()
 #define SPI_EXIT_CRITICAL()          IRQ_ENABLE()
   
-/* SPIRIT1_Spi_config_Private_Functions */
+/* S2LP_Spi_config_Private_Functions */
 #define RadioSpiCSLow()        HAL_GPIO_WritePin(RADIO_SPI_CS_PORT, RADIO_SPI_CS_PIN, GPIO_PIN_RESET)
 #define RadioSpiCSHigh()       HAL_GPIO_WritePin(RADIO_SPI_CS_PORT, RADIO_SPI_CS_PIN, GPIO_PIN_SET)
   
-/* SPIRIT1_Spi_config_Private_Macros */
+/* S2LP_Spi_config_Private_Macros */
 #define BUILT_HEADER(add_comm, w_r) (add_comm | w_r)                             /*!< macro to build the header byte*/
 #define WRITE_HEADER        BUILT_HEADER(HEADER_ADDRESS_MASK, HEADER_WRITE_MASK) /*!< macro to build the write 
                                                                                                          header byte*/

@@ -4,16 +4,24 @@
 
 
 /*** Cube Includes ***/
-#include "SPIRIT_Radio.h"
-#include "SPIRIT_Management.h"
-#include "SPIRIT_Commands.h"
+#include "S2LP_Radio.h"
+#include "S2LP_Commands.h"
+#include "S2LP_Gpio.h"
+#include "S2LP_Csma.h"
+#include "S2LP_PacketHandler.h"
+#include "S2LP_Qi.h"
+#include "S2LP_Timer.h"
+#include "S2LP_Timer_ex.h"
+#include "S2LP_Types.h"
+#include "S2LP_Csma.h"
+
 #include "MCU_Interface.h"
 
 
 /*** Contiki Lib Includes ***/
-#include "spirit1.h"
-#include "spirit1-config.h"
-#include "spirit1-const.h"
+//#include "s2lp.h"
+#include "s2lp-config.h"
+#include "s2lp-const.h"
 
 
 // betzw: enable beyond macro if you want debug messages also from IRQ handler
@@ -21,11 +29,11 @@
 
 
 /*** Macros from Cube Implementation ***/
-#define CLEAR_TXBUF()			(spirit_tx_len = 0)
-#define IS_RXBUF_EMPTY()        (spirit_rx_len == 0)
+#define CLEAR_TXBUF()			(s2lp_tx_len = 0)
+#define IS_RXBUF_EMPTY()        (s2lp_rx_len == 0)
 #define CLEAR_RXBUF()			do { 					\
-									spirit_rx_len = 0;	\
-									_spirit_rx_pos = 0; \
+									s2lp_rx_len = 0;	\
+									_s2lp_rx_pos = 0; \
 								} while(0)
 
 
@@ -35,13 +43,13 @@
 #define OFF    1
 
 
-/*** Macros for Spirit1 API ***/
+/*** Macros for S2lp API ***/
 /* max payload */
-#define SPIRIT1_MAX_PAYLOAD     (MAX_PACKET_LEN)
+#define S2LP_MAX_PAYLOAD     (MAX_PACKET_LEN)
 
 
 /*** Missing Cube External Declarations ***/
-extern "C" void SpiritManagementSetFrequencyBase(uint32_t);
+extern "C" void S2LPManagementSetFrequencyBase(uint32_t);
 
 
 /*** UnlockedSPI for Usage in IRQ context ***/
@@ -55,40 +63,40 @@ public:
 };
 
 
-/*** A Simple Spirit1 Class ***/
+/*** A Simple S2lp Class ***/
 // NOTE: must be a singleton (due to mix of MBED/CUBE code)!!!
 // NOTE: implementation is IRQ-save but (intentionally) NOT thread-safe!!!
-/** Simple Spirit1 Class
+/** Simple S2lp Class
  *
  * @Note Synchronization level: implementation is IRQ-save but (intentionally) NOT thread-safe!!!
  *
  * Example:
  * @code
  * #include "mbed.h"
- * #include "SimpleSpirit1.h"
+ * #include "SimpleS2LP.h"
  *
  * static char send_buf[] = "Hello World!";
  *
- * static SimpleSpirit1 &myspirit = SimpleSpirit1::CreateInstance(D11, D12, D3, D9, D10, D2);
+ * static SimpleS2LP &mys2lp = SimpleS2LP::CreateInstance(D11, D12, D3, D9, D10, D2);
  *
  * static volatile bool tx_done_flag = false;
  *
  * static void callback_func(int event)
  * {
- *   if (event == SimpleSpirit1::TX_DONE) {
+ *   if (event == SimpleS2LP::TX_DONE) {
  *     tx_done_flag = true;
  *   }
  * }
  *
  * int main()
  * {
- *   myspirit.attach_irq_callback(callback_func);
- *   myspirit.on();
+ *   mys2lp.attach_irq_callback(callback_func);
+ *   mys2lp.on();
  *
  *   while(1)
  *   {
  *     size_t curr_len = strlen((const char*)send_buf);
- *     myspirit.send(send_buf, curr_len);
+ *     mys2lp.send(send_buf, curr_len);
  *
  *     while(!tx_done_flag);
  *     tx_done_flag = false;
@@ -96,9 +104,9 @@ public:
  * }
  * @endcode
  */
-class SimpleSpirit1 {
+class SimpleS2LP {
  protected:
-	static SimpleSpirit1 *_singleton;
+	static SimpleS2LP *_singleton;
 
     /** Communication Interface Instance Variables **/
 	UnlockedSPI _spi; // betzw - NOTE: Morpho/Zio pins are valid only for NUCLEO-F401RE
@@ -121,14 +129,14 @@ class SimpleSpirit1 {
 
     void rx_timeout_handler(void) {
     	set_ready_state();
-	    cmd_strobe(SPIRIT1_STROBE_RX);
+	    cmd_strobe(S2LP_STROBE_RX);
 #ifdef DEBUG_IRQ
 	    debug("\r\n%s (%d)\r\n", __func__, __LINE__);
 #endif
     }
 
     void start_rx_timeout(void) {
-    	_rx_receiving_timeout.attach_us(Callback<void()>(this, &SimpleSpirit1::rx_timeout_handler), 100 * 1000); // 100ms
+    	_rx_receiving_timeout.attach_us(Callback<void()>(this, &SimpleS2LP::rx_timeout_handler), 100 * 1000); // 100ms
     }
 
     void stop_rx_timeout(void) {
@@ -141,16 +149,16 @@ class SimpleSpirit1 {
      * The +1 because of the first byte,
      * which will contain the length of the packet.
      */
-    volatile uint16_t spirit_tx_len;
-    volatile bool _spirit_tx_started;
-    volatile uint16_t spirit_rx_len;
-    volatile uint16_t _spirit_rx_pos;
-    volatile bool _spirit_rx_err;
-    uint8_t spirit_rx_buf[MAX_PACKET_LEN];
+    volatile uint16_t s2lp_tx_len;
+    volatile bool _s2lp_tx_started;
+    volatile uint16_t s2lp_rx_len;
+    volatile uint16_t _s2lp_rx_pos;
+    volatile bool _s2lp_rx_err;
+    uint8_t s2lp_rx_buf[MAX_PACKET_LEN];
     volatile bool _is_receiving;
 
     /** Status Variables from Cube Implementation **/
-    unsigned int spirit_on;
+    unsigned int s2lp_on;
     uint8_t last_rssi; //MGR
     uint8_t last_sqi;  //MGR
 
@@ -158,7 +166,7 @@ class SimpleSpirit1 {
     unsigned int _nr_of_irq_disables;
 
     /** Low Level Instance Methods **/
-    void disable_spirit_irq(void) {
+    void disable_s2lp_irq(void) {
     	_irq.disable_irq();
     	_nr_of_irq_disables++;
 #ifndef NDEBUG
@@ -166,7 +174,7 @@ class SimpleSpirit1 {
 #endif
     }
 
-    void enable_spirit_irq(void) {
+    void enable_s2lp_irq(void) {
 #ifndef NDEBUG
     	debug_if(_nr_of_irq_disables == 0, "\r\nassert failed in: %s (%d)\r\n", __func__, __LINE__);
 #endif
@@ -179,12 +187,12 @@ class SimpleSpirit1 {
 
     void enter_shutdown() {
     	_shut_down = 1;
-    	wait_ms(5); // wait 5 milliseconds (to allow Spirit1 to shut down)
+    	wait_ms(5); // wait 5 milliseconds (to allow S2lp to shut down)
     }
 
     void exit_shutdown() {
     	_shut_down = 0;
-    	wait_ms(10); // wait 10 milliseconds (to allow Spirit1 a proper boot-up sequence)
+    	wait_ms(10); // wait 10 milliseconds (to allow S2lp a proper boot-up sequence)
     }
 
     void cs_to_sclk_delay(void) {
@@ -212,84 +220,84 @@ class SimpleSpirit1 {
 
     /** Radio Instance Methods **/
     void radio_set_xtal_freq(uint32_t freq) {
-    	SpiritRadioSetXtalFrequency(freq);
+    	S2LPRadioSetXtalFrequency(freq);
     }
 
     void radio_set_pa_level_dbm(uint8_t cIndex, float fPowerdBm) {
-    	SpiritRadioSetPALeveldBm(cIndex, fPowerdBm);
+    	S2LPRadioSetPALeveldBm(cIndex, fPowerdBm);
     }
 
     void radio_set_pa_level_max_index(uint8_t cIndex) {
-    	SpiritRadioSetPALevelMaxIndex(cIndex);
+    	S2LPRadioSetPALevelMaxIndex(cIndex);
     }
 
     uint8_t radio_init(SRadioInit *init_struct) {
-    	return SpiritRadioInit(init_struct);
+    	return S2LPRadioInit(init_struct);
     }
 
-    void radio_persistent_rx(SpiritFunctionalState xNewState) {
-    	SpiritRadioPersistenRx(xNewState);
+    void radio_persistent_rx(SFunctionalState xNewState) {
+    	S2LPPacketHandlerSetRxPersistentMode(xNewState);
     }
 
-    void radio_afc_freeze_on_sync(SpiritFunctionalState xNewState) {
-    	SpiritRadioAFCFreezeOnSync(xNewState);
+    void radio_afc_freeze_on_sync(SFunctionalState xNewState) {
+    	//S2LPRadioAFCFreezeOnSync(xNewState);
     }
 
     /** Packet System Instance Methods **/
     void pkt_basic_init(PktBasicInit* pxPktBasicInit) {
-    	SpiritPktBasicInit(pxPktBasicInit);
+    	S2LPPktBasicInit(pxPktBasicInit);
     }
 
     void pkt_basic_set_payload_length(uint16_t nPayloadLength) {
-    	SpiritPktBasicSetPayloadLength(nPayloadLength);
+    	S2LPPktBasicSetPayloadLength(nPayloadLength);
     }
 
     uint16_t pkt_basic_get_received_pkt_length(void) {
-    	return SpiritPktBasicGetReceivedPktLength();
+    	return S2LPPktBasicGetReceivedPktLength();
     }
 
 	/** IRQ Instance Methods **/
-    void irq_de_init(SpiritIrqs* pxIrqInit) {
-    	SpiritIrqDeInit(pxIrqInit);
+    void irq_de_init(S2LPIrqs* pxIrqInit) {
+    	S2LPGpioIrqDeInit(pxIrqInit);
     }
 
     void irq_clear_status(void) {
-    	SpiritIrqClearStatus();
+    	S2LPGpioIrqClearStatus();
     }
 
-    void irq_set_status(IrqList xIrq, SpiritFunctionalState xNewState) {
-    	SpiritIrq(xIrq, xNewState);
+    void irq_set_status(IrqList xIrq, SFunctionalState xNewState) {
+    	S2LPGpioIrqConfig(xIrq, xNewState);
     }
 
-    void irq_get_status(SpiritIrqs* pxIrqStatus) {
-    	SpiritIrqGetStatus(pxIrqStatus);
+    void irq_get_status(S2LPIrqs* pxIrqStatus) {
+    	S2LPGpioIrqGetStatus(pxIrqStatus);
     }
 
     /** Management Instance Methods **/
     void mgmt_set_freq_base(uint32_t freq) {
-    	SpiritManagementSetFrequencyBase(freq);
+    	S2LPManagementSetFrequencyBase(freq);
     }
 
     void mgmt_refresh_status(void) {
-    	SpiritRefreshStatus();
+    	S2LPRefreshStatus();
     }
 
-    /** Spirit GPIO Instance Methods **/
-    void spirit_gpio_init(SGpioInit* pxGpioInitStruct) {
-    	SpiritGpioInit(pxGpioInitStruct);
+    /** S2LP GPIO Instance Methods **/
+    void s2lp_gpio_init(SGpioInit* pxGpioInitStruct) {
+    	S2LPGpioInit(pxGpioInitStruct);
     }
 
 	/** Qi Instance Methods **/
     void qi_set_sqi_threshold(SqiThreshold xSqiThr) {
-    	SpiritQiSetSqiThreshold(xSqiThr);
+    	// API REMOVED
     }
 
-    void qi_sqi_check(SpiritFunctionalState xNewState) {
-    	SpiritQiSqiCheck(xNewState);
+    void qi_sqi_check(SFunctionalState xNewState) {
+    	// API REMOVED
     }
 
     void qi_set_rssi_threshold_dbm(int nDbmValue) {
-    	SpiritQiSetRssiThresholddBm(nDbmValue);
+    	S2LPRadioSetRssiThreshdBm(nDbmValue);
     }
 
     float qi_get_rssi_dbm() {
@@ -298,20 +306,22 @@ class SimpleSpirit1 {
     }
 
     uint8_t qi_get_rssi() {
-    	return SpiritQiGetRssi();
+    	return S2LPRadioGetRssidBm();
     }
 
     uint8_t qi_get_sqi() {
-    	return SpiritQiGetSqi();
+    	// API REMOVED
+        return 0;
     }
 
     /** Timer Instance Methods **/
     void timer_set_rx_timeout_stop_condition(RxTimeoutStopCondition xStopCondition) {
-    	SpiritTimerSetRxTimeoutStopCondition(xStopCondition);
+    	S2LPTimerSetRxTimerStopCondition(xStopCondition);
     }
 
     void timer_set_rx_timeout_counter(uint8_t cCounter) {
-    	SpiritTimerSetRxTimeoutCounter(cCounter);
+    	S2LPTimerSetRxTimerCounter(cCounter);
+        
     }
 
     void timer_set_infinite_rx_timeout(void) {
@@ -319,23 +329,23 @@ class SimpleSpirit1 {
     }
 
     /** CSMA/CA Instance Methods **/
-    void csma_ca_state(SpiritFunctionalState xNewState) {
-    	SpiritCsma(xNewState);
+    void csma_ca_state(SFunctionalState xNewState) {
+    	S2LPCsma(xNewState);
     }
 
-    void csma_ca_init(CsmaInit* pxCsmaInit) {
+    void csma_ca_init(SCsmaInit* pxCsmaInit) {
     	csma_ca_state(S_DISABLE); // Disabled at init
-    	SpiritCsmaInit(pxCsmaInit);
-    	SpiritCsmaSeedReloadMode(S_DISABLE); // always disable seed reload
+    	S2LPCsmaInit(pxCsmaInit);
+    	S2LPCsmaSeedReloadMode(S_DISABLE); // always disable seed reload
     }
 
     /** Command Instance Methods**/
     void cmd_strobe(uint8_t cmd) {
-    	SpiritCmdStrobeCommand((SpiritCmd)cmd);
+    	S2LPCmdStrobeCommand((S2LPCmd)cmd);
     }
 
     void cmd_strobe_flush_rx_fifo() {
-    	SpiritCmdStrobeCommand(CMD_FLUSHRXFIFO);
+    	S2LPCmdStrobeCommand(CMD_FLUSHRXFIFO);
     }
 
     /** SPI Instance Methods **/
@@ -349,23 +359,23 @@ class SimpleSpirit1 {
 
     /** Linear FIFO Instance Methods **/
     uint8_t linear_fifo_read_num_elements_rx_fifo(void) {
-    	return SpiritLinearFifoReadNumElementsRxFifo();
+    	return S2LPFifoReadNumberBytesRxFifo();
     }
 
     uint8_t linear_fifo_read_num_elements_tx_fifo(void) {
-    	return SpiritLinearFifoReadNumElementsTxFifo();
+    	return S2LPFifoReadNumberBytesTxFifo();
     }
 
     void linear_fifo_set_almost_full_thr_rx(uint8_t cThrRxFifo) {
-    	SpiritLinearFifoSetAlmostFullThresholdRx(cThrRxFifo);
+    	S2LPFifoSetAlmostFullThresholdRx(cThrRxFifo);
     }
 
     /** Calibration Instance Methods **/
-    void calibration_rco(SpiritFunctionalState xNewState) {
-    	SpiritCalibrationRco(xNewState);
+    void calibration_rco(SFunctionalState xNewState) {
+    	S2LPTimerCalibrationRco(xNewState);
     }
 
-    /** Internal Spirit Methods */
+    /** Internal S2LP Methods */
     void set_ready_state(void);
     uint8_t refresh_state(void);
 
@@ -385,29 +395,29 @@ class SimpleSpirit1 {
 
     /** Helper Instance Methods **/
     void chip_sync_select() {
-    	disable_spirit_irq();
+    	disable_s2lp_irq();
     	chip_select();
     	cs_to_sclk_delay();
     }
 
     void chip_sync_unselect() {
     	chip_unselect();
-    	enable_spirit_irq();
+    	enable_s2lp_irq();
     }
 
     /** Init Instance Method **/
     void init();
 
-    /** Spirit Irq Callback */
+    /** S2LP Irq Callback */
     void IrqHandler();
 
     /** Constructor **/
-    SimpleSpirit1(PinName mosi, PinName miso, PinName sclk,
+    SimpleS2LP(PinName mosi, PinName miso, PinName sclk,
 		  PinName irq, PinName cs, PinName sdn,
 		  PinName led);
 
     /** Destructor **/
-    ~SimpleSpirit1(void); // should never be called!
+    ~SimpleS2LP(void); // should never be called!
 
 public:
     enum {
@@ -416,7 +426,7 @@ public:
 		TX_ERR
     };
 
-    /** Create singleton instance of 'SimpleSpirit1'
+    /** Create singleton instance of 'SimpleS2LP'
      *
      * @param mosi 'PinName' of mosi pin to use
      * @param miso 'PinName' of miso pin to use
@@ -427,34 +437,34 @@ public:
      *
      * @returns     reference to singleton instance
      */
-    static SimpleSpirit1& CreateInstance(PinName mosi, PinName miso, PinName sclk,
+    static SimpleS2LP& CreateInstance(PinName mosi, PinName miso, PinName sclk,
     		PinName irq, PinName cs, PinName sdn,
 			PinName led = NC) {
 
     	if(_singleton == NULL) {
-    		_singleton = new SimpleSpirit1(mosi, miso, sclk,
+    		_singleton = new SimpleS2LP(mosi, miso, sclk,
     				irq, cs, sdn, led);
     		_singleton->init();
     	} else {
-    		error("SimpleSpirit1 singleton already created!\n");
+    		error("SimpleS2LP singleton already created!\n");
     	}
 
     	return *_singleton;
     }
 
-    /** Get singleton instance of 'SimpleSpirit1'
+    /** Get singleton instance of 'SimpleS2LP'
      *
      * @returns     reference to singleton instance
      */
-    static SimpleSpirit1& Instance() {
+    static SimpleS2LP& Instance() {
     	if(_singleton == NULL) {
-    		error("SimpleSpirit1 must be created before used!\n");
+    		error("SimpleS2LP must be created before used!\n");
     	}
 
     	return *_singleton;
     }
 
-    /** Attach a function to be called by the Spirit Irq handler when an event has occurred
+    /** Attach a function to be called by the S2LP Irq handler when an event has occurred
      *
      *  @param func A void(int) callback, or 0 to set as none
      *
@@ -477,7 +487,7 @@ public:
     /** Set Channel
      */
     void set_channel(uint8_t channel) {
-    	SpiritRadioSetChannel(channel);
+    	S2LPRadioSetChannel(channel);
     }
 
     /** Send a Buffer
@@ -488,7 +498,7 @@ public:
      *
      * @returns             zero in case of success, non-zero error code otherwise
      *
-     * @note                the maximum payload size in bytes allowed is defined by macro 'SPIRIT1_MAX_PAYLOAD'
+     * @note                the maximum payload size in bytes allowed is defined by macro 'S2LP_MAX_PAYLOAD'
      */
     int send(const void *payload, unsigned int payload_len, bool use_csma_ca = true);
 
@@ -499,7 +509,7 @@ public:
      *
      * @returns         number of bytes copied into the buffer
      *
-     * @note            the buffer should be (at least) of size 'SPIRIT1_MAX_PAYLOAD' (in bytes).
+     * @note            the buffer should be (at least) of size 'S2LP_MAX_PAYLOAD' (in bytes).
      */
     int read(void *buf, unsigned int bufsize);
 
@@ -526,7 +536,7 @@ public:
 		return (-120.0+((float)(last_rssi-20))/2);
     }
 
-    /** Get latest value of RSSI (as Spirit1 raw value)
+    /** Get latest value of RSSI (as S2lp raw value)
      */
     uint8_t get_last_rssi_raw(void) {
     	if(last_rssi == 0) {
